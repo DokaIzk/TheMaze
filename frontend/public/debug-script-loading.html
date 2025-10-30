@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Script Loading</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #0a0a1a;
+            color: #00ccff;
+            padding: 20px;
+        }
+        .log {
+            background: #1a1a2e;
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 3px solid #00ccff;
+            border-radius: 3px;
+        }
+        .error {
+            border-left-color: #ff4444;
+            color: #ff4444;
+        }
+        .success {
+            border-left-color: #10b981;
+            color: #10b981;
+        }
+    </style>
+</head>
+<body>
+    <h1>Script Loading Debug</h1>
+    <div id="logs"></div>
+
+    <script>
+        function log(msg, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const logEl = document.createElement('div');
+            logEl.className = 'log ' + type;
+            logEl.textContent = msg;
+            logsDiv.appendChild(logEl);
+            console.log(msg);
+        }
+
+        log('1. Page loaded', 'info');
+        log('2. window.showConnect defined: ' + (typeof window.showConnect !== 'undefined'), 
+            typeof window.showConnect !== 'undefined' ? 'success' : 'error');
+        log('3. window.stacksAPI defined: ' + (typeof window.stacksAPI !== 'undefined'), 
+            typeof window.stacksAPI !== 'undefined' ? 'success' : 'error');
+    </script>
+
+    <!-- Load scripts in order -->
+    <script>log('Before loading stacks-connect.js', 'info');</script>
+    <script src="lib/stacks-connect.js" onload="log('✅ stacks-connect.js loaded successfully', 'success')" onerror="log('❌ stacks-connect.js failed to load', 'error')"></script>
+    
+    <script>
+        setTimeout(() => {
+            log('After stacks-connect.js script tag', 'info');
+            log('window.showConnect: ' + (typeof window.showConnect), 
+                typeof window.showConnect !== 'undefined' ? 'success' : 'error');
+        }, 100);
+    </script>
+
+    <script>log('Before loading config.js', 'info');</script>
+    <script src="src/config.js" onload="log('✅ config.js loaded', 'success')" onerror="log('❌ config.js failed', 'error')"></script>
+
+    <script>log('Before loading stacksAPI.js', 'info');</script>
+    <script src="src/api/stacksAPI.js" onload="log('✅ stacksAPI.js loaded', 'success')" onerror="log('❌ stacksAPI.js failed', 'error')"></script>
+
+    <script>
+        setTimeout(() => {
+            log('=== FINAL CHECK ===', 'info');
+            log('window.showConnect: ' + (typeof window.showConnect), 
+                typeof window.showConnect !== 'undefined' ? 'success' : 'error');
+            log('window.stacksAPI: ' + (typeof window.stacksAPI), 
+                typeof window.stacksAPI !== 'undefined' ? 'success' : 'error');
+            if (window.stacksAPI) {
+                log('stacksAPI.isUserConnected: ' + (typeof window.stacksAPI.isUserConnected), 'success');
+            }
+        }, 500);
+    </script>
+</body>
+</html>

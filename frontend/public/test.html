@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StackRunner - Automated Test Suite</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0A0A1A;
+            color: #00CCFF;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #00FFFF;
+            text-shadow: 0 0 10px #00CCFF;
+        }
+        
+        .test-section {
+            background: #001122;
+            border: 2px solid #00CCFF;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .test-item {
+            padding: 8px;
+            margin: 5px 0;
+            border-left: 4px solid #444;
+            background: #002244;
+        }
+        
+        .test-item.pass {
+            border-left-color: #00FF00;
+            background: #002200;
+        }
+        
+        .test-item.fail {
+            border-left-color: #FF0000;
+            background: #220000;
+        }
+        
+        .test-item.pending {
+            border-left-color: #FFAA00;
+            background: #222200;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .status.pass { background: #00FF00; color: #000; }
+        .status.fail { background: #FF0000; color: #FFF; }
+        .status.pending { background: #FFAA00; color: #000; }
+        
+        #run-tests {
+            display: block;
+            margin: 20px auto;
+            padding: 15px 30px;
+            background: #00CCFF;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        
+        #run-tests:hover {
+            background: #00FFFF;
+            box-shadow: 0 0 20px #00CCFF;
+        }
+        
+        #run-tests:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .summary {
+            background: #003355;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .summary h2 {
+            margin: 0 0 15px 0;
+            color: #00FFFF;
+        }
+        
+        .stat {
+            display: inline-block;
+            margin: 0 15px;
+            font-size: 18px;
+        }
+        
+        .console-log {
+            background: #000;
+            color: #0F0;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        
+        .console-log div {
+            margin: 2px 0;
+        }
+        
+        .error {
+            color: #F00;
+        }
+        
+        .warning {
+            color: #FA0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏃 StackRunner - Automated Test Suite 🏃</h1>
+    
+    <button id="run-tests">Run All Tests</button>
+    
+    <div class="summary" id="summary" style="display: none;">
+        <h2>Test Results Summary</h2>
+        <div class="stat">Total: <span id="total-tests">0</span></div>
+        <div class="stat" style="color: #0F0;">Passed: <span id="passed-tests">0</span></div>
+        <div class="stat" style="color: #F00;">Failed: <span id="failed-tests">0</span></div>
+        <div class="stat" style="color: #FA0;">Pending: <span id="pending-tests">0</span></div>
+        <div class="stat">Success Rate: <span id="success-rate">0%</span></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🎮 Game Initialization Tests</h2>
+        <div id="init-tests"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🕹️ Control Tests</h2>
+        <div id="control-tests"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>💥 Collision Tests</h2>
+        <div id="collision-tests"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🎨 Visual Tests</h2>
+        <div id="visual-tests"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>📱 Mobile Tests</h2>
+        <div id="mobile-tests"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>📋 Console Output</h2>
+        <div class="console-log" id="console"></div>
+    </div>
+    
+    <script>
+        // Test framework
+        const tests = {
+            init: [],
+            control: [],
+            collision: [],
+            visual: [],
+            mobile: []
+        };
+        
+        const consoleLog = [];
+        
+        // Capture console output
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        console.log = function(...args) {
+            consoleLog.push({ type: 'log', message: args.join(' ') });
+            originalLog.apply(console, args);
+            updateConsoleDisplay();
+        };
+        
+        console.error = function(...args) {
+            consoleLog.push({ type: 'error', message: args.join(' ') });
+            originalError.apply(console, args);
+            updateConsoleDisplay();
+        };
+        
+        console.warn = function(...args) {
+            consoleLog.push({ type: 'warning', message: args.join(' ') });
+            originalWarn.apply(console, args);
+            updateConsoleDisplay();
+        };
+        
+        function updateConsoleDisplay() {
+            const consoleEl = document.getElementById('console');
+            consoleEl.innerHTML = consoleLog.slice(-50).map(log => {
+                const className = log.type === 'error' ? 'error' : log.type === 'warning' ? 'warning' : '';
+                return `<div class="${className}">[${log.type.toUpperCase()}] ${log.message}</div>`;
+            }).join('');
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+        
+        // Test helper functions
+        function addTest(category, name, testFn) {
+            tests[category].push({ name, testFn, status: 'pending' });
+        }
+        
+        async function runTest(test) {
+            try {
+                const result = await test.testFn();
+                test.status = result ? 'pass' : 'fail';
+                test.message = result === true ? 'Test passed' : result;
+            } catch (error) {
+                test.status = 'fail';
+                test.message = error.message;
+                console.error('Test failed:', test.name, error);
+            }
+        }
+        
+        function renderTest(test) {
+            const status = test.status === 'pass' ? 'PASS' : test.status === 'fail' ? 'FAIL' : 'PEND';
+            return `
+                <div class="test-item ${test.status}">
+                    <span class="status ${test.status}">${status}</span>
+                    <strong>${test.name}</strong>
+                    ${test.message ? `<div style="margin-left: 60px; color: #888;">${test.message}</div>` : ''}
+                </div>
+            `;
+        }
+        
+        async function runAllTests() {
+            const button = document.getElementById('run-tests');
+            button.disabled = true;
+            button.textContent = 'Running Tests...';
+            
+            // Run all tests
+            for (const category in tests) {
+                for (const test of tests[category]) {
+                    await runTest(test);
+                    renderResults();
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+            
+            button.disabled = false;
+            button.textContent = 'Run All Tests Again';
+            updateSummary();
+        }
+        
+        function renderResults() {
+            for (const category in tests) {
+                const container = document.getElementById(`${category}-tests`);
+                container.innerHTML = tests[category].map(renderTest).join('');
+            }
+        }
+        
+        function updateSummary() {
+            const summary = document.getElementById('summary');
+            summary.style.display = 'block';
+            
+            let total = 0, passed = 0, failed = 0, pending = 0;
+            
+            for (const category in tests) {
+                tests[category].forEach(test => {
+                    total++;
+                    if (test.status === 'pass') passed++;
+                    else if (test.status === 'fail') failed++;
+                    else pending++;
+                });
+            }
+            
+            const successRate = total > 0 ? Math.round((passed / total) * 100) : 0;
+            
+            document.getElementById('total-tests').textContent = total;
+            document.getElementById('passed-tests').textContent = passed;
+            document.getElementById('failed-tests').textContent = failed;
+            document.getElementById('pending-tests').textContent = pending;
+            document.getElementById('success-rate').textContent = successRate + '%';
+        }
+        
+        // Define actual tests
+        
+        // Initialization Tests
+        addTest('init', 'Phaser is loaded', () => {
+            return typeof Phaser !== 'undefined';
+        });
+        
+        addTest('init', 'Config is loaded', () => {
+            return typeof CONFIG !== 'undefined' && CONFIG.CANVAS_WIDTH > 0;
+        });
+        
+        addTest('init', 'CollisionSystem is loaded', () => {
+            return typeof CollisionSystem !== 'undefined';
+        });
+        
+        addTest('init', 'MazeGenerator is loaded', () => {
+            return typeof MazeGenerator !== 'undefined';
+        });
+        
+        addTest('init', 'Maze generates without errors', () => {
+            const maze = new MazeGenerator(10, 10);
+            maze.generate();
+            return maze.grid && maze.grid.length === 10;
+        });
+        
+        addTest('init', 'Collision grid generates', () => {
+            const maze = new MazeGenerator(10, 10);
+            maze.generate();
+            const grid = maze.toCollisionGrid();
+            return grid && grid.length === 10 && grid[0].length === 10;
+        });
+        
+        // Control Tests
+        addTest('control', 'Keyboard event listeners work', () => {
+            let triggered = false;
+            const handler = () => { triggered = true; };
+            window.addEventListener('keydown', handler);
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'p' }));
+            window.removeEventListener('keydown', handler);
+            return triggered;
+        });
+        
+        addTest('control', 'Touch support is available', () => {
+            return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        });
+        
+        // Collision Tests
+        addTest('collision', 'checkWallCollision function exists', () => {
+            return typeof CollisionSystem.checkWallCollision === 'function';
+        });
+        
+        addTest('collision', 'checkWallCollision detects boundary', () => {
+            const grid = [[0, 0], [0, 0]];
+            return CollisionSystem.checkWallCollision(-10, 10, 10, 10, grid, 17);
+        });
+        
+        addTest('collision', 'checkPointCollision detects overlap', () => {
+            return CollisionSystem.checkPointCollision(10, 10, 15, 15, 10);
+        });
+        
+        addTest('collision', 'getValidMovePosition returns valid position', () => {
+            const grid = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+            const result = CollisionSystem.getValidMovePosition(17, 17, 5, 5, 13, 13, grid, 17);
+            return result && result.x !== undefined && result.y !== undefined;
+        });
+        
+        // Visual Tests
+        addTest('visual', 'Canvas size matches config', () => {
+            return CONFIG.CANVAS_WIDTH === 1280 && CONFIG.CANVAS_HEIGHT === 960;
+        });
+        
+        addTest('visual', 'Cell size is correct', () => {
+            return CONFIG.CELL_SIZE === 17;
+        });
+        
+        addTest('visual', 'Player size fits in cell', () => {
+            return CONFIG.PLAYER_SIZE < CONFIG.CELL_SIZE;
+        });
+        
+        addTest('visual', 'Maze dimensions are valid', () => {
+            return CONFIG.MAZE_WIDTH === 45 && CONFIG.MAZE_HEIGHT === 30;
+        });
+        
+        // Mobile Tests
+        addTest('mobile', 'Viewport meta tag exists', () => {
+            const viewport = document.querySelector('meta[name="viewport"]');
+            return viewport && viewport.content.includes('width=device-width');
+        });
+        
+        addTest('mobile', 'Touch action is set', () => {
+            const style = window.getComputedStyle(document.body);
+            return style.touchAction === 'manipulation';
+        });
+        
+        addTest('mobile', 'User select is disabled', () => {
+            const style = window.getComputedStyle(document.body);
+            return style.userSelect === 'none' || style.webkitUserSelect === 'none';
+        });
+        
+        addTest('mobile', 'PWA manifest exists', async () => {
+            try {
+                const response = await fetch('/manifest.json');
+                return response.ok;
+            } catch (error) {
+                return 'Manifest file not found';
+            }
+        });
+        
+        // Event listeners
+        document.getElementById('run-tests').addEventListener('click', runAllTests);
+        
+        // Initial render
+        renderResults();
+        
+        console.log('Test suite loaded. Click "Run All Tests" to begin.');
+    </script>
+    
+    <!-- Load game dependencies for testing -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    <script src="/src/config.js"></script>
+    <script src="/src/utils/collisions.js"></script>
+    <script src="/src/utils/mazeGenerator.js"></script>
+</body>
+</html>

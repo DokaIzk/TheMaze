@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stacks.js Library Debug</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            max-width: 1000px;
+        }
+        .log-section {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            background: #0a0a0a;
+        }
+        .success { color: #00ff00; }
+        .error { color: #ff0000; }
+        .warning { color: #ffff00; }
+        .info { color: #00ccff; }
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #00cc00;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Stacks.js Library Debug Console</h1>
+    
+    <div class="grid">
+        <div>
+            <button onclick="scanGlobals()">📊 Scan Globals</button>
+            <button onclick="checkLoader()">🔧 Check Loader</button>
+        </div>
+        <div>
+            <button onclick="testConnect()">🧪 Test Connect</button>
+            <button onclick="clearLogs()">🗑️ Clear Logs</button>
+        </div>
+    </div>
+    
+    <div id="output"></div>
+    
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(msg, type = 'info') {
+            const span = document.createElement('div');
+            span.className = type;
+            span.textContent = msg;
+            output.appendChild(span);
+            console.log(msg);
+        }
+        
+        function clearLogs() {
+            output.innerHTML = '';
+        }
+        
+        function scanGlobals() {
+            log('=== GLOBAL SCAN ===', 'info');
+            
+            const stacksRelated = Object.keys(window).filter(k => {
+                try {
+                    const v = window[k];
+                    return (k.toLowerCase().includes('stack') || 
+                            k.toLowerCase().includes('connect') ||
+                            k === 'showConnect' ||
+                            (typeof v === 'function' && 
+                             (k.includes('show') || k.includes('open'))));
+                } catch (e) {
+                    return false;
+                }
+            });
+            
+            log(`Found ${stacksRelated.length} related globals:`, 'info');
+            
+            stacksRelated.forEach(name => {
+                const val = window[name];
+                const type = typeof val;
+                log(`  ✓ ${name}: ${type}`, 'success');
+                
+                if (type === 'object' && val !== null) {
+                    const keys = Object.keys(val).slice(0, 5);
+                    if (keys.length > 0) {
+                        log(`    └─ Keys: ${keys.join(', ')}`, 'info');
+                    }
+                    
+                    // Check for showConnect
+                    if (val.showConnect) {
+                        log(`    └─ HAS showConnect! ✅`, 'success');
+                    }
+                }
+                
+                if (type === 'function' && name.includes('show')) {
+                    log(`    └─ This is a function! ✅`, 'success');
+                }
+            });
+            
+            // Check window.stacksLib
+            if (window.stacksLib) {
+                log('\n=== WINDOW.STACKSLIB ===', 'info');
+                const libs = window.stacksLib;
+                ['showConnect', 'openSTXTransfer', 'openContractCall', 'disconnect', 'isConnected'].forEach(name => {
+                    const hasFn = typeof libs[name] === 'function';
+                    log(`  ${hasFn ? '✅' : '❌'} ${name}: ${typeof libs[name]}`, hasFn ? 'success' : 'error');
+                });
+            } else {
+                log('window.stacksLib not found', 'error');
+            }
+        }
+        
+        function checkLoader() {
+            log('=== LOADER CHECK ===', 'info');
+            
+            if (typeof window.areStacksLibrariesLoaded === 'function') {
+                const loaded = window.areStacksLibrariesLoaded();
+                log(`areStacksLibrariesLoaded(): ${loaded}`, loaded ? 'success' : 'warning');
+            } else {
+                log('window.areStacksLibrariesLoaded not found', 'error');
+            }
+            
+            if (typeof window.getStacksLib === 'function') {
+                const lib = window.getStacksLib();
+                log(`getStacksLib() returned:`, 'info');
+                if (lib && typeof lib === 'object') {
+                    log(`  Type: object`, 'success');
+                    log(`  Has showConnect: ${!!lib.showConnect}`, lib.showConnect ? 'success' : 'error');
+                    log(`  Keys: ${Object.keys(lib).slice(0, 10).join(', ')}`, 'info');
+                } else {
+                    log(`  Returned: ${lib}`, 'warning');
+                }
+            } else {
+                log('window.getStacksLib not found', 'error');
+            }
+            
+            // Check if loader script loaded
+            log('\n=== SCRIPT CHECK ===', 'info');
+            const scripts = document.querySelectorAll('script');
+            const loaderScript = Array.from(scripts).find(s => s.src && s.src.includes('stacksLoader'));
+            const connectScript = Array.from(scripts).find(s => s.src && s.src.includes('@stacks/connect'));
+            
+            log(`Loader script: ${loaderScript ? '✅ Found' : '❌ Not found'}`, loaderScript ? 'success' : 'error');
+            log(`Connect script: ${connectScript ? '✅ Found' : '❌ Not found'}`, connectScript ? 'success' : 'error');
+        }
+        
+        async function testConnect() {
+            log('=== TEST CONNECT ===', 'info');
+            
+            try {
+                if (!window.stacksAPI) {
+                    log('window.stacksAPI not found!', 'error');
+                    return;
+                }
+                
+                log('Calling window.stacksAPI.connectWallet()...', 'info');
+                const result = await window.stacksAPI.connectWallet();
+                
+                if (result.success) {
+                    log(`✅ Connection successful! Address: ${result.address}`, 'success');
+                } else {
+                    log(`❌ Connection failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            log('=== PAGE LOADED ===', 'success');
+            setTimeout(() => {
+                checkLoader();
+                scanGlobals();
+            }, 500);
+        });
+        
+        // Listen for custom event
+        window.addEventListener('stacksLibrariesLoaded', (e) => {
+            log('✅ stacksLibrariesLoaded event fired!', 'success');
+            scanGlobals();
+        });
+    </script>
+    
+    <!-- Load the exact same scripts as index.html -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    <script defer src="src/api/stacksLoader.js"></script>
+    <script defer src="https://unpkg.com/@stacks/connect@7.4.0/dist/index.global.js"></script>
+    <script defer src="https://unpkg.com/@stacks/transactions@6.5.4/dist/transactions.umd.js"></script>
+    <script defer src="https://unpkg.com/@stacks/network@6.5.4/dist/network.umd.js"></script>
+    <script defer src="src/config.js"></script>
+    <script defer src="src/api/stacksAPI.js"></script>
+</body>
+</html>

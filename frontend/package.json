@@ -1,0 +1,44 @@
+{
+  "name": "stackrunner-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for StackRunner - A blockchain-powered maze game",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "http-server public -p 3000 -c-1",
+    "dev": "live-server public --port=3000 --open",
+    "dev-static": "http-server public -p 3000 -c-1 -o",
+    "build": "echo 'No build process needed for vanilla JS'",
+    "test": "echo 'No tests specified'",
+    "lint": "echo 'No linting configured'"
+  },
+  "keywords": [
+    "blockchain",
+    "game",
+    "stacks",
+    "maze",
+    "phaser",
+    "javascript"
+  ],
+  "author": "StackRunner Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@parcel/transformer-webmanifest": "^2.16.0",
+    "http-server": "^14.1.1",
+    "live-server": "^1.2.2",
+    "parcel": "^2.16.0"
+  },
+  "dependencies": {
+    "@stacks/connect": "^7.10.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/stackrunner.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/stackrunner/issues"
+  },
+  "homepage": "https://github.com/your-username/stackrunner#readme"
+}

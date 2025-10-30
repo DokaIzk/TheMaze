@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet Connection Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #0a0a1a;
+            color: #00ccff;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #1a1a2e;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #00ccff;
+        }
+        h1 {
+            text-shadow: 0 0 10px #00ccff;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 3px solid #00ccff;
+        }
+        .success {
+            background: rgba(16, 185, 129, 0.1);
+            border-left-color: #10b981;
+            color: #10b981;
+        }
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            border-left-color: #ef4444;
+            color: #ef4444;
+        }
+        .info {
+            background: rgba(0, 204, 255, 0.1);
+            border-left-color: #00ccff;
+            color: #00ccff;
+        }
+        button {
+            background: linear-gradient(135deg, #00ccff, #ffaa00);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #output {
+            background: #0a0a1a;
+            border: 1px solid #00ccff;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-line {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 StacksRunner Wallet Connection Test</h1>
+        
+        <div class="status info">
+            <strong>Testing @stacks/connect from local bundle:</strong> lib/stacks-connect.js
+        </div>
+
+        <h2>1. Library Status</h2>
+        <button onclick="checkLibrary()">Check @stacks/connect Library</button>
+        <div id="library-status"></div>
+
+        <h2>2. Test Wallet Connection</h2>
+        <button onclick="testConnection()" id="connect-btn">Connect Wallet</button>
+        <div id="connection-status"></div>
+
+        <h2>3. Console Output</h2>
+        <div id="output"></div>
+    </div>
+
+    <!-- Load the stacks-connect library -->
+    <script src="lib/stacks-connect.js"></script>
+    
+    <!-- Load StacksAPI -->
+    <script src="src/config.js"></script>
+    <script src="src/api/stacksAPI.js"></script>
+
+    <script>
+        // Capture console output
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        const output = document.getElementById('output');
+
+        function addLog(msg, type = 'info') {
+            const line = document.createElement('div');
+            line.className = 'log-line';
+            line.textContent = `[${type.toUpperCase()}] ${msg}`;
+            if (type === 'error') {
+                line.style.color = '#ef4444';
+            } else if (type === 'warn') {
+                line.style.color = '#f59e0b';
+            } else if (type === 'success') {
+                line.style.color = '#10b981';
+            }
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        console.log = function(...args) {
+            originalLog(...args);
+            addLog(args.join(' '), 'info');
+        };
+
+        console.error = function(...args) {
+            originalError(...args);
+            addLog(args.join(' '), 'error');
+        };
+
+        console.warn = function(...args) {
+            originalWarn(...args);
+            addLog(args.join(' '), 'warn');
+        };
+
+        function checkLibrary() {
+            const statusDiv = document.getElementById('library-status');
+            statusDiv.innerHTML = '';
+
+            addLog('=== Checking @stacks/connect library ===', 'info');
+
+            // Check if window.showConnect exists
+            if (window.showConnect) {
+                const status = document.createElement('div');
+                status.className = 'status success';
+                status.innerHTML = `
+                    <strong>✅ @stacks/connect library loaded successfully!</strong><br>
+                    Functions available:
+                    <ul>
+                        <li>window.showConnect: ${typeof window.showConnect}</li>
+                        <li>window.openSTXTransfer: ${typeof window.openSTXTransfer}</li>
+                        <li>window.openContractCall: ${typeof window.openContractCall}</li>
+                        <li>window.disconnect: ${typeof window.disconnect}</li>
+                    </ul>
+                `;
+                statusDiv.appendChild(status);
+                addLog('✅ @stacks/connect library loaded', 'success');
+            } else {
+                const status = document.createElement('div');
+                status.className = 'status error';
+                status.innerHTML = `
+                    <strong>❌ @stacks/connect library NOT loaded!</strong><br>
+                    window.showConnect is: ${typeof window.showConnect}<br>
+                    Check that lib/stacks-connect.js is loading correctly.
+                `;
+                statusDiv.appendChild(status);
+                addLog('❌ @stacks/connect library NOT loaded', 'error');
+            }
+
+            // Check if StacksAPI initialized
+            if (window.stacksAPI) {
+                const status = document.createElement('div');
+                status.className = 'status success';
+                status.style.marginTop = '10px';
+                status.innerHTML = `
+                    <strong>✅ StacksAPI initialized</strong><br>
+                    Connected: ${window.stacksAPI.isUserConnected() ? 'Yes' : 'No'}<br>
+                    Address: ${window.stacksAPI.getUserAddress() || 'Not connected'}
+                `;
+                statusDiv.appendChild(status);
+                addLog('✅ StacksAPI initialized', 'success');
+            } else {
+                const status = document.createElement('div');
+                status.className = 'status error';
+                status.style.marginTop = '10px';
+                status.innerHTML = '<strong>❌ StacksAPI NOT initialized!</strong>';
+                statusDiv.appendChild(status);
+                addLog('❌ StacksAPI NOT initialized', 'error');
+            }
+        }
+
+        async function testConnection() {
+            const statusDiv = document.getElementById('connection-status');
+            const btn = document.getElementById('connect-btn');
+            statusDiv.innerHTML = '';
+
+            addLog('=== Starting wallet connection test ===', 'info');
+
+            if (!window.stacksAPI) {
+                const status = document.createElement('div');
+                status.className = 'status error';
+                status.textContent = '❌ StacksAPI not initialized!';
+                statusDiv.appendChild(status);
+                addLog('❌ StacksAPI not initialized', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Connecting...';
+
+            try {
+                addLog('Calling stacksAPI.connectWallet()...', 'info');
+                const result = await window.stacksAPI.connectWallet();
+
+                if (result.success) {
+                    const status = document.createElement('div');
+                    status.className = 'status success';
+                    status.innerHTML = `
+                        <strong>✅ Wallet Connected!</strong><br>
+                        Address: ${result.address}
+                    `;
+                    statusDiv.appendChild(status);
+                    addLog(`✅ Wallet connected: ${result.address}`, 'success');
+                    btn.textContent = '✅ Connected!';
+                } else {
+                    const status = document.createElement('div');
+                    status.className = 'status error';
+                    status.innerHTML = `
+                        <strong>❌ Connection Failed</strong><br>
+                        Error: ${result.error}
+                    `;
+                    statusDiv.appendChild(status);
+                    addLog(`❌ Connection failed: ${result.error}`, 'error');
+                    btn.textContent = 'Try Again';
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                const status = document.createElement('div');
+                status.className = 'status error';
+                status.innerHTML = `
+                    <strong>❌ Error</strong><br>
+                    ${error.message}
+                `;
+                statusDiv.appendChild(status);
+                addLog(`❌ Error: ${error.message}`, 'error');
+                btn.textContent = 'Try Again';
+                btn.disabled = false;
+            }
+        }
+
+        // Auto-check library on load
+        window.addEventListener('load', () => {
+            addLog('Page loaded, checking library...', 'info');
+            checkLibrary();
+        });
+    </script>
+</body>
+</html>

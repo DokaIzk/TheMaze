@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Stacks.js CDN</title>
+</head>
+<body>
+    <h1>Testing Stacks.js CDN Loading</h1>
+    <div id="output"></div>
+    
+    <script>
+        const output = document.getElementById('output');
+        const log = (msg) => {
+            console.log(msg);
+            output.innerHTML += msg + '<br>';
+        };
+        
+        log('Starting CDN tests...');
+        log('Initial window globals: ' + Object.keys(window).length);
+    </script>
+    
+    <!-- Test different CDN URLs -->
+    <script src="https://unpkg.com/@stacks/connect@7.4.0/dist/connect.umd.js"></script>
+    <script>
+        log('After connect.umd.js loaded');
+        log('Window globals: ' + Object.keys(window).length);
+        
+        // Check all possible names
+        const checks = [
+            'StacksConnect',
+            'stacksConnect',
+            'stacks',
+            'connect',
+            'Connect',
+            'stackConnect',
+            'STACKS_CONNECT'
+        ];
+        
+        checks.forEach(name => {
+            if (window[name]) {
+                log(`✅ Found window.${name}:`, typeof window[name]);
+                if (typeof window[name] === 'object') {
+                    log(`   Keys: ${Object.keys(window[name]).slice(0, 10).join(', ')}`);
+                }
+            }
+        });
+        
+        // List all globals with 'stack' or 'connect'
+        const relatedGlobals = Object.keys(window).filter(k => 
+            k.toLowerCase().includes('stack') || k.toLowerCase().includes('connect')
+        );
+        log('Related globals: ' + relatedGlobals.join(', '));
+        
+        // Deep inspection
+        relatedGlobals.forEach(name => {
+            const val = window[name];
+            log(`\n${name}:`, typeof val);
+            if (typeof val === 'object' && val !== null) {
+                const keys = Object.keys(val).slice(0, 5);
+                log(`  Keys: ${keys.join(', ')}`);
+                if (keys.includes('showConnect')) {
+                    log('  ✅ Has showConnect!');
+                }
+            }
+        });
+    </script>
+    
+    <script src="https://unpkg.com/@stacks/transactions@6.5.4/dist/transactions.umd.js"></script>
+    <script>
+        log('\n\nAfter transactions.umd.js loaded');
+        const relatedGlobals2 = Object.keys(window).filter(k => 
+            k.toLowerCase().includes('stack') || k.toLowerCase().includes('transaction')
+        );
+        log('Related globals: ' + relatedGlobals2.join(', '));
+    </script>
+</body>
+</html>

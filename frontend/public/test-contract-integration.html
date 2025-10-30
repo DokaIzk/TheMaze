@@ -1,0 +1,273 @@
+/**
+ * Contract API Manual Tests
+ * Run in browser console to test
+ */
+
+console.log('📋 Contract Integration Test Suite');
+console.log('===================================\n');
+
+// Helper to format test results
+function testResult(name, passed, message = '') {
+  const icon = passed ? '✅' : '❌';
+  console.log(`${icon} ${name}${message ? ': ' + message : ''}`);
+  return passed;
+}
+
+let testsRun = 0;
+let testsPassed = 0;
+
+// ============================================================
+// 1. ContractAPI Initialization Tests
+// ============================================================
+
+console.log('📌 Test Group 1: ContractAPI Initialization');
+console.log('─────────────────────────────────────────\n');
+
+try {
+  const api = new ContractAPI();
+  testsRun++;
+  if (testResult('API instance created', api !== null)) testsPassed++;
+  
+  testsRun++;
+  if (testResult('API has createGame method', typeof api.createGame === 'function')) testsPassed++;
+  
+  testsRun++;
+  if (testResult('API has updatePlayerProgress method', typeof api.updatePlayerProgress === 'function')) testsPassed++;
+  
+  testsRun++;
+  if (testResult('API has claimReward method', typeof api.claimReward === 'function')) testsPassed++;
+} catch (e) {
+  console.error('❌ Failed to initialize ContractAPI:', e.message);
+}
+
+console.log('\n');
+
+// ============================================================
+// 2. Game Creation Tests
+// ============================================================
+
+console.log('📌 Test Group 2: Game Creation');
+console.log('───────────────────────────\n');
+
+(async () => {
+  const api = new ContractAPI();
+  
+  // Test 2.1: Create valid game
+  try {
+    const result = await api.createGame(5, 100000);
+    testsRun++;
+    const passed = result.success && result.gameId > 0;
+    if (testResult('Create game with valid params', passed)) testsPassed++;
+    
+    if (passed) {
+      const gameData = api.getGameData(result.gameId);
+      testsRun++;
+      if (testResult('Game data stored correctly', gameData && gameData.totalRounds === 5)) testsPassed++;
+    }
+  } catch (e) {
+    console.error('❌ Game creation test failed:', e.message);
+  }
+  
+  // Test 2.2: Reject invalid rounds
+  try {
+    const result = await api.createGame(0, 100000);
+    testsRun++;
+    if (testResult('Reject zero rounds', !result.success)) testsPassed++;
+  } catch (e) {
+    console.error('❌ Invalid rounds test failed:', e.message);
+  }
+  
+  // Test 2.3: Reject negative bounty
+  try {
+    const result = await api.createGame(5, -100000);
+    testsRun++;
+    if (testResult('Reject negative bounty', !result.success)) testsPassed++;
+  } catch (e) {
+    console.error('❌ Negative bounty test failed:', e.message);
+  }
+  
+  console.log('\n');
+  
+  // ============================================================
+  // 3. Player Progress Tests
+  // ============================================================
+  
+  console.log('📌 Test Group 3: Player Progress');
+  console.log('─────────────────────────────\n');
+  
+  localStorage.setItem('stxAddress', 'SP2BQG3RK17LZZ8HKSHV56NBQSJCKY2AM0PQFNZ7');
+  
+  // Create a game for progress tests
+  const gameResult = await api.createGame(5, 100000);
+  const gameId = gameResult.gameId;
+  
+  // Test 3.1: Update progress for round 1
+  try {
+    const result = await api.updatePlayerProgress(gameId, 1, 30000);
+    testsRun++;
+    if (testResult('Record round 1 progress', result.success)) testsPassed++;
+  } catch (e) {
+    console.error('❌ Round 1 progress test failed:', e.message);
+  }
+  
+  // Test 3.2: Invalid game ID
+  try {
+    const result = await api.updatePlayerProgress(999999, 1, 30000);
+    testsRun++;
+    if (testResult('Reject invalid game ID', !result.success)) testsPassed++;
+  } catch (e) {
+    console.error('❌ Invalid game ID test failed:', e.message);
+  }
+  
+  // Test 3.3: Invalid round number
+  try {
+    const result = await api.updatePlayerProgress(gameId, 0, 30000);
+    testsRun++;
+    if (testResult('Reject invalid round number', !result.success)) testsPassed++;
+  } catch (e) {
+    console.error('❌ Invalid round test failed:', e.message);
+  }
+  
+  console.log('\n');
+  
+  // ============================================================
+  // 4. Winner Status Tests
+  // ============================================================
+  
+  console.log('📌 Test Group 4: Winner Status Detection');
+  console.log('────────────────────────────────────\n');
+  
+  const winnerTest = await api.createGame(5, 100000);
+  const winnerId = winnerTest.gameId;
+  
+  // Test 4.1: Add first winner
+  try {
+    const status = api.checkWinnerStatus(winnerId, 150000);
+    testsRun++;
+    if (testResult('First player becomes winner', status.isWinner && status.position === 1)) testsPassed++;
+  } catch (e) {
+    console.error('❌ First winner test failed:', e.message);
+  }
+  
+  // Test 4.2: Calculate reward correctly
+  try {
+    const status = api.checkWinnerStatus(winnerId, 150000);
+    testsRun++;
+    const reward = api.calculateReward(100000, 40);
+    if (testResult('Reward calculated correctly', status.reward === reward)) testsPassed++;
+  } catch (e) {
+    console.error('❌ Reward calculation test failed:', e.message);
+  }
+  
+  // Test 4.3: Prevent duplicate winners
+  try {
+    const status = api.checkWinnerStatus(winnerId, 140000);
+    testsRun++;
+    if (testResult('Prevent duplicate winners', status.alreadyWinner === true)) testsPassed++;
+  } catch (e) {
+    console.error('❌ Duplicate winner test failed:', e.message);
+  }
+  
+  console.log('\n');
+  
+  // ============================================================
+  // 5. Reward Claiming Tests
+  // ============================================================
+  
+  console.log('📌 Test Group 5: Reward Claiming');
+  console.log('──────────────────────────────\n');
+  
+  const claimTest = await api.createGame(5, 100000);
+  const claimGameId = claimTest.gameId;
+  api.checkWinnerStatus(claimGameId, 150000);
+  
+  // Test 5.1: Claim reward
+  try {
+    const result = await api.claimReward(claimGameId, 1);
+    testsRun++;
+    if (testResult('Claim reward successfully', result.success && result.txId)) testsPassed++;
+  } catch (e) {
+    console.error('❌ Claim reward test failed:', e.message);
+  }
+  
+  // Test 5.2: Prevent double claiming
+  try {
+    const result = await api.claimReward(claimGameId, 1);
+    testsRun++;
+    if (testResult('Prevent double claiming', !result.success)) testsPassed++;
+  } catch (e) {
+    console.error('❌ Double claim test failed:', e.message);
+  }
+  
+  console.log('\n');
+  
+  // ============================================================
+  // 6. Time Formatting Tests
+  // ============================================================
+  
+  console.log('📌 Test Group 6: Utility Functions');
+  console.log('───────────────────────────────\n');
+  
+  testsRun++;
+  if (testResult('Format time 45s', api.formatTime(45000) === '45s')) testsPassed++;
+  
+  testsRun++;
+  if (testResult('Format time 2m 5s', api.formatTime(125000) === '2m 5s')) testsPassed++;
+  
+  console.log('\n');
+  
+  // ============================================================
+  // 7. ErrorPopup Tests
+  // ============================================================
+  
+  console.log('📌 Test Group 7: ErrorPopup Component');
+  console.log('────────────────────────────────\n');
+  
+  try {
+    const popup = ErrorPopup.show('Test error', 'Test Title', 0);
+    testsRun++;
+    if (testResult('Create error popup', popup && document.body.contains(popup))) testsPassed++;
+    ErrorPopup.hide(popup);
+  } catch (e) {
+    console.error('❌ Error popup test failed:', e.message);
+  }
+  
+  try {
+    const popup = ErrorPopup.warning('Test warning', 0);
+    testsRun++;
+    if (testResult('Create warning popup', popup && document.body.contains(popup))) testsPassed++;
+    ErrorPopup.hide(popup);
+  } catch (e) {
+    console.error('❌ Warning popup test failed:', e.message);
+  }
+  
+  try {
+    const popup = ErrorPopup.success('Test success', 0);
+    testsRun++;
+    if (testResult('Create success popup', popup && document.body.contains(popup))) testsPassed++;
+    ErrorPopup.hide(popup);
+  } catch (e) {
+    console.error('❌ Success popup test failed:', e.message);
+  }
+  
+  console.log('\n');
+  
+  // ============================================================
+  // FINAL RESULTS
+  // ============================================================
+  
+  console.log('═════════════════════════════════════');
+  console.log('📊 TEST RESULTS');
+  console.log('═════════════════════════════════════');
+  console.log(`\nTests Passed: ${testsPassed}/${testsRun}`);
+  console.log(`Success Rate: ${((testsPassed / testsRun) * 100).toFixed(1)}%\n`);
+  
+  if (testsPassed === testsRun) {
+    console.log('🎉 ALL TESTS PASSED! 🎉\n');
+  } else {
+    console.log(`⚠️ ${testsRun - testsPassed} test(s) failed\n`);
+  }
+  
+  console.log('═════════════════════════════════════');
+  
+})();

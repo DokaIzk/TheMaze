@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description" content="StackRunner - A fast-paced, blockchain-powered maze challenge built for Stacks">
+    <meta name="keywords" content="blockchain, game, stacks, maze, crypto, leaderboard">
+    <meta name="author" content="StackRunner Team">
+    
+    <!-- PWA Configuration -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="StackRunner">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="StackRunner - Blockchain Maze Challenge">
+    <meta property="og:description" content="Race against time through neon mazes to collect STX tokens. Compete on the blockchain leaderboard!">
+    <meta property="og:url" content="https://stackrunner.game">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏃‍♂️</text></svg>">
+    
+    <title>TheMaze</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: manipulation; /* Prevents zoom on double-tap */
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #000000;
+            color: #FFFFFF;
+            overflow: hidden;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #game-container {
+            /* position: relative; */
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Mobile-specific styles */
+        @media (max-width: 768px) {
+            #game-container {
+                padding-top: 0px; /* Remove padding to maximize maze space */
+            }
+            
+            #ui-overlay {
+                width: 90% !important;
+                font-size: 14px !important;
+                top: 8px !important;
+                flex-wrap: wrap;
+                gap: 8px !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+            }
+            
+            .ui-element {
+                padding: 8px 14px !important;
+                min-width: 70px !important;
+                font-size: 12px !important;
+                background: rgba(139, 92, 246, 0.3) !important;
+                border: 1px solid #8B5CF6 !important;
+            }
+
+            .game-over-title {
+                font-size: 36px;
+                letter-spacing: 1px;
+            }
+
+            .final-score {
+                font-size: 18px;
+            }
+
+            .restart-button {
+                padding: 12px 30px;
+                font-size: 16px;
+            }
+
+            #submission-status {
+                font-size: 14px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #game-container {
+                padding-top: 0px; /* Remove padding to maximize maze space */
+            }
+            
+            #ui-overlay {
+                width: 95% !important;
+                font-size: 12px !important;
+                top: 6px !important;
+                gap: 6px !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+            }
+            
+            .ui-element {
+                padding: 6px 10px !important;
+                min-width: 60px !important;
+                font-size: 11px !important;
+                background: rgba(139, 92, 246, 0.35) !important;
+            }
+
+            .game-over-title {
+                font-size: 28px;
+                margin-bottom: 15px;
+            }
+
+            .final-score {
+                font-size: 16px;
+                margin-bottom: 20px;
+            }
+
+            .restart-button {
+                padding: 10px 20px;
+                font-size: 14px;
+            }
+
+            #submission-status {
+                font-size: 12px;
+                min-height: 50px;
+            }
+        }
+
+        /* #loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .loading-text {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #00CCFF;
+            text-shadow: 0 0 10px #00CCFF;
+        }
+
+        .loading-bar {
+            width: 300px;
+            height: 10px;
+            background: #333;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .loading-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #00CCFF, #FFAA00);
+            width: 0%;
+            transition: width 0.3s ease;
+        } */
+
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            font-size: 18px;
+            color: #FFFFFF;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            gap: 15px;
+            pointer-events: none;
+        }
+
+        .ui-element {
+            padding: 10px 20px;
+            background: rgba(139, 92, 246, 0.2);
+            border-radius: 5px;
+            border: 1px solid #8B5CF6;
+            color: #8B5CF6;
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+            text-align: center;
+            min-width: 120px;
+            font-weight: 600;
+            pointer-events: auto;
+        }
+
+        .ui-element span {
+            color: #FFFFFF;
+            font-weight: 700;
+        }
+
+        #wallet-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+
+        .wallet-button {
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #00CCFF, #FFAA00);
+            border: none;
+            border-radius: 5px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            box-shadow: 0 0 15px rgba(0, 204, 255, 0.5);
+        }
+
+        .wallet-button:hover {
+            transform: scale(1.05);
+        }
+
+        .wallet-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, 
+                rgba(5, 5, 25, 0.98), 
+                rgba(30, 10, 50, 0.98),
+                rgba(5, 5, 25, 0.98));
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 500;
+            backdrop-filter: blur(8px);
+            border-top: 4px solid #8B5CF6;
+            border-bottom: 4px solid #A855F7;
+            gap: 30px;
+        }
+
+        #game-over-screen::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 50%, rgba(168, 85, 247, 0.08) 0%, transparent 50%);
+            pointer-events: none;
+            border-radius: 0;
+        }
+
+        #game-over-screen > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .game-over-title {
+            font-size: 56px;
+            font-weight: 900;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, #10b981, #34d399, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
+            animation: titlePulse 2s ease-in-out infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes titlePulse {
+            0%, 100% {
+                filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.3));
+            }
+            50% {
+                filter: drop-shadow(0 0 25px rgba(16, 185, 129, 0.6));
+            }
+        }
+
+        .final-score {
+            font-size: 28px;
+            font-weight: 700;
+            color: #A8DADC;
+            letter-spacing: 2px;
+            text-shadow: 
+                0 0 15px rgba(139, 92, 246, 0.4),
+                0 0 30px rgba(168, 85, 247, 0.2);
+            animation: scoreGlow 1.5s ease-in-out infinite;
+        }
+
+        @keyframes scoreGlow {
+            0%, 100% {
+                filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.3));
+            }
+            50% {
+                filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.5));
+            }
+        }
+
+        #submission-status {
+            font-size: 16px;
+            color: #E0E0E0;
+            min-height: 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            text-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+            line-height: 1.6;
+        }
+
+        #submission-status strong {
+            color: #10b981;
+            font-weight: 700;
+        }
+
+        .restart-button {
+            padding: 16px 48px;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, #8B5CF6, #A855F7);
+            border: 3px solid #8B5CF6;
+            border-radius: 12px;
+            color: #FFFFFF;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 
+                0 0 20px rgba(139, 92, 246, 0.5),
+                0 0 40px rgba(139, 92, 246, 0.2),
+                inset 0 0 20px rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .restart-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .restart-button:hover {
+            transform: translateY(-4px) scale(1.05);
+            box-shadow: 
+                0 0 30px rgba(139, 92, 246, 0.8),
+                0 0 60px rgba(139, 92, 246, 0.4),
+                inset 0 0 20px rgba(255, 255, 255, 0.15);
+            background: linear-gradient(135deg, #A855F7, #D6BCFA);
+            border-color: #D6BCFA;
+        }
+
+        .restart-button:hover::before {
+            left: 100%;
+        }
+
+        .restart-button:active {
+            transform: translateY(-2px) scale(0.98);
+            box-shadow: 
+                0 0 20px rgba(139, 92, 246, 0.6),
+                inset 0 0 15px rgba(139, 92, 246, 0.2);
+        }
+
+        /* Tablet Responsive */
+        @media (max-width: 1024px) {
+            .game-over-title {
+                font-size: 48px;
+            }
+
+            .final-score {
+                font-size: 26px;
+            }
+
+            #submission-status {
+                font-size: 15px;
+            }
+
+            .restart-button {
+                padding: 15px 44px;
+                font-size: 19px;
+            }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            #game-over-screen {
+                gap: 20px;
+                border-top: 3px solid #8B5CF6;
+                border-bottom: 3px solid #A855F7;
+            }
+
+            .game-over-title {
+                font-size: 40px;
+                letter-spacing: 2px;
+            }
+
+            .final-score {
+                font-size: 22px;
+            }
+
+            #submission-status {
+                font-size: 14px;
+                min-height: 60px;
+                gap: 10px;
+            }
+
+            .restart-button {
+                padding: 14px 36px;
+                font-size: 18px;
+                letter-spacing: 1px;
+            }
+
+            .restart-button:hover {
+                transform: translateY(-3px) scale(1.03);
+            }
+        }
+
+        /* Small Mobile */
+        @media (max-width: 480px) {
+            #game-over-screen {
+                gap: 16px;
+                border-top: 2px solid #8B5CF6;
+                border-bottom: 2px solid #A855F7;
+            }
+
+            .game-over-title {
+                font-size: 32px;
+                letter-spacing: 1px;
+            }
+
+            .final-score {
+                font-size: 20px;
+            }
+
+            #submission-status {
+                font-size: 13px;
+                min-height: 55px;
+            }
+
+            .restart-button {
+                padding: 12px 32px;
+                font-size: 16px;
+                letter-spacing: 1px;
+            }
+
+            .restart-button:hover {
+                transform: translateY(-2px) scale(1.02);
+            }
+        }
+
+        /* Extra Small Mobile */
+        @media (max-width: 360px) {
+            .game-over-title {
+                font-size: 28px;
+            }
+
+            .final-score {
+                font-size: 18px;
+            }
+
+            .restart-button {
+                padding: 11px 28px;
+                font-size: 15px;
+            }
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+        }
+
+        .desktop-controls {
+            display: inline;
+        }
+
+        .mobile-controls {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .desktop-controls {
+                display: none;
+            }
+            
+            .mobile-controls {
+                display: inline;
+            }
+            
+            #instructions {
+                font-size: 12px;
+                bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Loading Screen -->
+        <!-- <div id="loading-screen">
+            <div class="loading-text">Loading StackRunner...</div>
+            <div class="loading-bar">
+                <div class="loading-progress" id="loading-progress"></div>
+            </div>
+        </div> -->
+
+        <!-- UI Overlay - Hidden by default, only shown during GameScene -->
+        <div id="ui-overlay" style="display: none;">
+            <div class="ui-element">
+                <div>Score: <span id="score">0</span></div>
+            </div>
+            <div class="ui-element">
+                <div>Level: <span id="level">1</span></div>
+            </div>
+            <div class="ui-element">
+                <div>Time: <span id="timer">30</span></div>
+            </div>
+        </div>
+
+        <!-- Wallet Status -->
+        <!-- <div id="wallet-status">
+            <button id="wallet-button" class="wallet-button">Connect Wallet</button>
+            <div id="wallet-address" style="display: none; margin-top: 10px; font-size: 12px;"></div>
+        </div> -->
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen">
+            <div class="game-over-title">Game Over!</div>
+            <div class="final-score">Final Score: <span id="final-score">0</span></div>
+            <div style="margin-bottom: 20px; color: #888;">
+                <div id="submission-status">Submitting score to blockchain...</div>
+            </div>
+            <button id="restart-button" class="restart-button">Play Again</button>
+        </div>
+
+        <!-- Instructions -->
+        <!-- <div id="instructions">
+            <span class="desktop-controls">Use WASD or Arrow Keys to move</span>
+            <span class="mobile-controls">Swipe to move • Tap to pause</span>
+            • Collect the STX token before time runs out!
+        </div> -->
+    </div>
+
+    <!-- Phaser.js -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    
+    <!-- @stacks/connect from CDN with local fallback -->
+    <script src="https://unpkg.com/@stacks/connect@7.0.2/dist/connect.umd.js" onerror="loadLocalStacksConnect()"></script>
+    <script>
+      // Fallback function to load local copy if CDN fails
+      function loadLocalStacksConnect() {
+        console.log('⚠️ CDN failed, loading local copy...');
+        var script = document.createElement('script');
+        script.src = 'lib/stacks-connect.js';
+        document.head.appendChild(script);
+      }
+    </script>
+    
+    <!-- Config and API must load FIRST (no defer) to be available for scenes -->
+    <script src="src/config.js"></script>
+    <script src="src/api/stacksAPI.js"></script>
+    <script src="src/api/contractAPI.js"></script>
+    <script src="src/ui/ErrorPopup.js"></script>
+    
+    <!-- Utility scripts (with defer is fine) -->
+    <script defer src="src/utils/mazeGenerator.js"></script>
+    <script defer src="src/utils/collisions.js"></script>
+    
+    <!-- Scene scripts (with defer) -->
+    <script defer src="src/scenes/BootScene.js"></script>
+    <script defer src="src/scenes/TitleScene.js"></script>
+    <script defer src="src/scenes/ConnectWalletScene.js"></script>
+    <script defer src="src/scenes/MazeCreationScene.js"></script>
+    <script defer src="src/scenes/GameScene.js"></script>
+    <script defer src="src/scenes/UIScene.js"></script>
+    
+    <!-- Main entry point (loads last) -->
+    <script defer src="src/main.js"></script>
+</body>
+</html>

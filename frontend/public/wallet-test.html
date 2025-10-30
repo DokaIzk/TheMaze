@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StacksRunner - Wallet Connection Test</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0e27, #1a1a2e);
+            color: #00ff00;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #00ccff;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #00ccff;
+        }
+        .section {
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .test-item {
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #00ccff;
+            padding-left: 15px;
+        }
+        .success { color: #00ff00; border-left-color: #00ff00; }
+        .error { color: #ff4444; border-left-color: #ff4444; }
+        .warning { color: #ffaa00; border-left-color: #ffaa00; }
+        .info { color: #00ccff; border-left-color: #00ccff; }
+        button {
+            background: linear-gradient(135deg, #00ccff, #00ff88);
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 10px 5px 10px 0;
+            transition: transform 0.2s;
+        }
+        button:hover { transform: scale(1.05); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #output {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ccff;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .status-ok { background: #00ff00; color: #000; }
+        .status-fail { background: #ff4444; color: #fff; }
+        .status-pending { background: #ffaa00; color: #000; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 StacksRunner - Wallet Connection Test Suite</h1>
+        
+        <div class="section">
+            <h2>📋 Pre-Flight Checks</h2>
+            <div id="preflight"></div>
+        </div>
+
+        <div class="section">
+            <h2>🔧 Test Controls</h2>
+            <button onclick="testLibraryLoading()">📦 Test Library Loading</button>
+            <button onclick="testStacksAPI()">🔌 Test StacksAPI</button>
+            <button onclick="testWalletConnection()">🦊 Test Wallet Connection</button>
+            <button onclick="clearOutput()">🗑️ Clear Output</button>
+        </div>
+
+        <div class="section">
+            <h2>📊 Test Output</h2>
+            <div id="output"></div>
+        </div>
+
+        <div class="section">
+            <h2>💾 Local Storage</h2>
+            <button onclick="inspectLocalStorage()">📋 Inspect Local Storage</button>
+            <button onclick="clearLocalStorage()">🗑️ Clear Local Storage</button>
+            <div id="localStorage-output"></div>
+        </div>
+    </div>
+
+    <!-- Load the same scripts as the game -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    <script src="https://unpkg.com/@stacks/connect@7.4.0/dist/index.global.js"></script>
+    <script src="src/config.js"></script>
+    <script src="src/api/stacksAPI.js"></script>
+
+    <script>
+        const output = document.getElementById('output');
+        const preflightDiv = document.getElementById('preflight');
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-item ${type}`;
+            div.textContent = message;
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+            console.log(message);
+        }
+
+        function clearOutput() {
+            output.innerHTML = '';
+        }
+
+        function addPreflight(title, status, message) {
+            const div = document.createElement('div');
+            const badge = status ? 'status-ok' : 'status-fail';
+            const statusText = status ? '✅' : '❌';
+            div.innerHTML = `
+                <div class="test-item info">
+                    ${statusText} <strong>${title}</strong>
+                    <span class="status-badge ${badge}">${status ? 'OK' : 'FAIL'}</span>
+                    <br><small>${message}</small>
+                </div>
+            `;
+            preflightDiv.appendChild(div);
+        }
+
+        function testLibraryLoading() {
+            log('=== Testing Library Loading ===', 'info');
+            
+            // Check Phaser
+            if (window.Phaser) {
+                log('✅ Phaser loaded: ' + window.Phaser.VERSION, 'success');
+            } else {
+                log('❌ Phaser not loaded', 'error');
+            }
+
+            // Check @stacks/connect
+            const stacksLibs = [];
+            for (const key of Object.keys(window)) {
+                try {
+                    const val = window[key];
+                    if (val && typeof val === 'object' && typeof val.showConnect === 'function') {
+                        stacksLibs.push(key);
+                    }
+                } catch (e) {}
+            }
+
+            if (stacksLibs.length > 0) {
+                log('✅ @stacks/connect found at: ' + stacksLibs.join(', '), 'success');
+            } else {
+                log('❌ @stacks/connect not found', 'error');
+            }
+
+            // Check config
+            if (typeof CONFIG !== 'undefined') {
+                log('✅ CONFIG loaded', 'success');
+            } else {
+                log('❌ CONFIG not found', 'error');
+            }
+        }
+
+        function testStacksAPI() {
+            log('=== Testing StacksAPI ===', 'info');
+            
+            if (typeof window.stacksAPI === 'undefined') {
+                log('❌ window.stacksAPI is undefined', 'error');
+                return;
+            }
+
+            log('✅ window.stacksAPI exists', 'success');
+
+            // Test methods exist
+            const methods = ['connectWallet', 'disconnectWallet', 'isUserConnected', 'getUserAddress', 'loadUserData'];
+            methods.forEach(method => {
+                if (typeof window.stacksAPI[method] === 'function') {
+                    log(`  ✅ ${method}() exists`, 'success');
+                } else {
+                    log(`  ❌ ${method}() not found`, 'error');
+                }
+            });
+
+            // Test initial state
+            const connected = window.stacksAPI.isUserConnected();
+            if (connected) {
+                log('✅ Wallet currently connected: ' + window.stacksAPI.getUserAddress(), 'success');
+            } else {
+                log('ℹ️ Wallet not connected (expected on first load)', 'info');
+            }
+        }
+
+        async function testWalletConnection() {
+            log('=== Testing Wallet Connection ===', 'info');
+            log('Starting connection test...', 'info');
+
+            try {
+                const result = await window.stacksAPI.connectWallet();
+                
+                if (result.success) {
+                    log('✅ Connection successful!', 'success');
+                    log('📍 Address: ' + result.address, 'success');
+                    log('🔑 Connected: ' + window.stacksAPI.isUserConnected(), 'success');
+                } else {
+                    log('❌ Connection failed: ' + result.error, 'error');
+                }
+            } catch (error) {
+                log('❌ Exception during connection: ' + error.message, 'error');
+            }
+        }
+
+        function inspectLocalStorage() {
+            const output = document.getElementById('localStorage-output');
+            output.innerHTML = '';
+
+            const div = document.createElement('div');
+            div.className = 'test-item info';
+            
+            let content = '<strong>Local Storage Contents:</strong><br>';
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                const value = localStorage.getItem(key);
+                content += `<br><strong>${key}:</strong><br>`;
+                try {
+                    const parsed = JSON.parse(value);
+                    content += JSON.stringify(parsed, null, 2);
+                } catch (e) {
+                    content += value;
+                }
+            }
+
+            if (localStorage.length === 0) {
+                content += '<em>Local storage is empty</em>';
+            }
+
+            div.innerHTML = content;
+            output.appendChild(div);
+        }
+
+        function clearLocalStorage() {
+            localStorage.clear();
+            window.stacksAPI.userAddress = null;
+            window.stacksAPI.userPublicKey = null;
+            inspectLocalStorage();
+            log('✅ Local storage cleared and StacksAPI reset', 'success');
+        }
+
+        // Run preflight checks on load
+        window.addEventListener('load', () => {
+            log('✅ Page loaded', 'success');
+            
+            // Preflight checks
+            addPreflight('Phaser Library', typeof window.Phaser !== 'undefined', 'Phaser.js v' + (window.Phaser?.VERSION || 'unknown'));
+            addPreflight('StacksAPI', typeof window.stacksAPI !== 'undefined', 'StacksAPI singleton created');
+            addPreflight('Config', typeof CONFIG !== 'undefined', 'Game config loaded');
+            
+            // Find @stacks/connect
+            let stacksFound = false;
+            for (const key of Object.keys(window)) {
+                try {
+                    const val = window[key];
+                    if (val && typeof val === 'object' && typeof val.showConnect === 'function') {
+                        addPreflight('@stacks/connect', true, 'Found at window.' + key);
+                        stacksFound = true;
+                        break;
+                    }
+                } catch (e) {}
+            }
+            if (!stacksFound) {
+                addPreflight('@stacks/connect', false, 'CDN library not loaded');
+            }
+
+            log('=== Ready for testing ===', 'success');
+        });
+    </script>
+</body>
+</html>
