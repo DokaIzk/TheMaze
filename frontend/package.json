@@ -1,5 +1,5 @@
 {
-  "name": "stackrunner-frontend",
+  "name": "themaze",
   "version": "1.0.0",
   "description": "Frontend for StackRunner - A blockchain-powered maze game",
   "main": "src/main.js",
@@ -28,7 +28,8 @@
     "parcel": "^2.16.0"
   },
   "dependencies": {
-    "@stacks/connect": "^7.10.2"
+    "@stacks/connect": "^7.10.2",
+    "ethers": "^6.15.0"
   },
   "engines": {
     "node": ">=14.0.0"

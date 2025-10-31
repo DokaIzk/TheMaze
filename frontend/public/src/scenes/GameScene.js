@@ -1232,68 +1232,26 @@ class GameScene extends Phaser.Scene {
         console.log(`Starting at level ${this.gameState.level} based on difficulty: ${this.userMazeConfig.difficulty}`);
     }
 
-    trackLevelCompletion() {
-        // Track completion for blockchain submission
-        const completion = {
-            level: this.gameState.level,
-            score: this.gameState.score,
-            timeRemaining: this.gameState.timeLeft,
-            timestamp: Date.now(),
-            gameId: this.userMazeConfig?.gameId,
-            userId: this.userMazeConfig?.userId
-        };
-        
-        this.levelCompletions.push(completion);
-        console.log('✅ Level completion tracked:', completion);
-        
-        // Submit progress to blockchain (asynchronously, don't block gameplay)
-        this.submitLevelProgressToBlockchain(completion);
-    }
-    
-    async submitLevelProgressToBlockchain(completion) {
+    async trackLevelCompletion() {
+        // Called when a level is completed
+        if (!this.userMazeConfig || !this.userMazeConfig.gameId) return;
+        const gameId = this.userMazeConfig.gameId;
+        const currentRound = this.gameState.level;
+        const completionTime = CONFIG.BASE_TIME - this.gameState.timeLeft;
+        // Store locally for UI
+        this.userMazeConfig.roundTimes[currentRound - 1] = completionTime;
+        // Call contract to update progress
         try {
-            if (!this.userMazeConfig || !this.userMazeConfig.gameId) {
-                console.warn('⚠️ No game ID available for progress submission');
-                return;
-            }
-            
-            // Calculate completion time (time spent on this round)
-            const roundTime = (completion.timestamp - (this.levelCompletions.length > 1 ? 
-                this.levelCompletions[this.levelCompletions.length - 2].timestamp : 
-                this.userMazeConfig.createdAt)) || 30000;
-            
-            console.log(`📤 Submitting round ${completion.level} progress to blockchain...`);
-            
-            // Call contract API to update progress
-            const result = await window.contractAPI.updatePlayerProgress(
-                this.userMazeConfig.gameId,
-                completion.level,
-                roundTime
-            );
-            
-            if (result.success) {
-                console.log(`✅ Round ${completion.level} submitted to blockchain`);
-                
-                // Check if this completed the game
-                if (result.isWinner !== undefined) {
-                    // Player completed final round
-                    if (result.isWinner) {
-                        console.log(`🏆 Player is a winner! Position: ${result.position}`);
-                        this.userMazeConfig.winnerPosition = result.position;
-                        this.userMazeConfig.winnerReward = result.reward;
-                    } else {
-                        console.log(`📊 Game complete but not in top 5`);
-                    }
-                }
+            const result = await window.contractAPI.updatePlayerProgress(gameId, currentRound, completionTime);
+            if (!result.success) {
+                console.error('Blockchain updatePlayerProgress failed:', result.error);
+                // Optionally show error popup
+                if (window.ErrorPopup) window.ErrorPopup.show(result.error, '❌ Progress Update Failed', 4000);
             } else {
-                console.error(`❌ Failed to submit progress: ${result.error}`);
-                if (result.error) {
-                    ErrorPopup.warning(`Blockchain note: ${result.error}`, 3000);
-                }
+                console.log('Progress updated on blockchain for round', currentRound);
             }
-        } catch (error) {
-            console.error('❌ Error submitting progress to blockchain:', error);
-            ErrorPopup.warning('Could not submit progress to blockchain', 3000);
+        } catch (err) {
+            console.error('Error calling updatePlayerProgress:', err);
         }
     }
 

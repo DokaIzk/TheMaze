@@ -167,144 +167,32 @@ class ConnectWalletScene extends Phaser.Scene {
     async connectWallet() {
         const button = document.getElementById('connect-wallet-btn');
         const originalText = button.textContent;
-
+        button.textContent = 'Opening wallet...';
+        button.disabled = true;
+        button.style.opacity = '0.7';
         try {
-            // Update button state
-            button.textContent = 'Opening wallet...';
-            button.disabled = true;
-            button.style.opacity = '0.7';
-
-            // Prefer real stacksAPI connection when available
-            if (window.stacksAPI && typeof window.stacksAPI.connectWallet === 'function') {
-                const result = await window.stacksAPI.connectWallet();
-
-                if (result && result.success) {
-                    button.textContent = '✅ Connected!';
-                    button.style.background = 'linear-gradient(135deg, #10B981, #059669)';
-
-                    // Store wallet connection in registry
-                    this.registry.set('walletConnected', true);
-                    this.registry.set('userAddress', result.address);
-
-                    // Ensure contractAPI uses live mode
-                    if (window.contractAPI) window.contractAPI.useDemo = false;
-
-                    console.log('✅ Wallet connected (real):', result.address);
-
-                    // Proceed to maze creation after brief delay
-                    setTimeout(() => this.proceedToMazeCreation(), 1500);
-                    return;
-                } else {
-                    // If stacksAPI returned a structured failure, throw to trigger fallback
-                    throw new Error(result && result.error ? result.error : 'Wallet connection failed');
-                }
-            }
-
-            // If stacksAPI is not available, fall back to demo mode
-            console.warn('⚠️ stacksAPI not available, falling back to demo wallet');
-            const demoResult = await this.simulateWalletConnection();
-
-            if (demoResult && demoResult.success) {
-                button.textContent = 'Connected';
-                button.style.background = '#A855F7';
-
+            // Use MetaMask via contractAPI
+            const ethAddress = await window.contractAPI.connectWallet();
+            if (ethAddress) {
+                button.textContent = 'Connected!';
+                button.style.background = 'linear-gradient(135deg, #8B5CF6, #A855F7)';
                 this.registry.set('walletConnected', true);
-                this.registry.set('userAddress', demoResult.address);
-
-                // Ensure contractAPI uses demo mode
-                if (window.contractAPI) window.contractAPI.useDemo = true;
-
-                console.log('✅ Demo wallet connected:', demoResult.address);
-
-                setTimeout(() => this.proceedToMazeCreation(), 1200);
-                return;
+                this.registry.set('userAddress', ethAddress);
+                localStorage.setItem('ethAddress', ethAddress);
+                console.log('✅ Wallet connected (MetaMask):', ethAddress);
+                setTimeout(() => this.proceedToMazeCreation(), 1500);
+            } else {
+                throw new Error('Wallet connection failed');
             }
-
         } catch (error) {
             console.error('Failed to connect wallet:', error);
-
-            // // Show friendly error popup if available
-            // if (window.ErrorPopup) {
-            //     window.ErrorPopup.warning('Wallet connection failed — switched to Demo mode');
-            // }
-
-            // Try demo fallback automatically
-            try {
-                const fallback = await this.simulateWalletConnection();
-                if (fallback && fallback.success) {
-                    button.textContent = 'Connected';
-                    button.style.background = '#A855F7';
-
-                    this.registry.set('walletConnected', true);
-                    this.registry.set('userAddress', fallback.address);
-
-                    if (window.contractAPI) window.contractAPI.useDemo = true;
-
-                    console.log('✅ Demo fallback connected:', fallback.address);
-
-                    setTimeout(() => this.proceedToMazeCreation(), 1200);
-                    return;
-                }
-            } catch (e) {
-                console.error('Demo fallback also failed:', e);
-            }
-
-            // // Show inline error
-            // button.textContent = '❌ ' + (error.message || 'Connection Failed');
-            // button.style.background = 'linear-gradient(135deg, #EF4444, #DC2626)';
-
-            // const errorMsg = document.getElementById('wallet-error') || document.createElement('div');
-            // errorMsg.id = 'wallet-error';
-            // errorMsg.textContent = error.message || 'Check console for details';
-            // errorMsg.style.cssText = `
-            //     color: #FF6B6B;
-            //     font-size: 14px;
-            //     margin-top: 20px;
-            //     text-align: center;
-            //     max-width: 300px;
-            // `;
-            // if (!document.getElementById('wallet-error')) {
-            //     button.parentElement.appendChild(errorMsg);
-            // }
-
-            // // Reset button after delay
-            // setTimeout(() => {
-            //     button.textContent = originalText;
-            //     button.style.background = 'linear-gradient(135deg, #8B5CF6, #A855F7)';
-            //     button.disabled = false;
-            //     button.style.opacity = '1';
-
-            //     // Clear error message
-            //     const errorEl = document.getElementById('wallet-error');
-            //     if (errorEl) errorEl.remove();
-            // }, 4000);
-
-            // Allow users to proceed even if wallet connection fails
             button.textContent = originalText;
             button.disabled = false;
             button.style.opacity = '1';
-            setTimeout(() => this.proceedToMazeCreation(), 1200);
+            if (window.ErrorPopup) window.ErrorPopup.show(error.message, '❌ Wallet Connection Failed', 4000);
         }
     }
     
-    async simulateWalletConnection() {
-        return new Promise((resolve) => {
-            // Simulate connection delay
-            setTimeout(() => {
-                // Demo address for testing
-                const demoAddress = 'SP2BQG3RK17LZZ8HKSHV56NBQSJCKY2AM0PQFNZ7';
-                
-                // Store in localStorage
-                localStorage.setItem('stxAddress', demoAddress);
-                
-                resolve({
-                    success: true,
-                    address: demoAddress
-                });
-            }, 1500);
-        });
-    }
-
     proceedToMazeCreation() {
         // Fade out the entire container
         const container = document.getElementById('connect-wallet-container');
